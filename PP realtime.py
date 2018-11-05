@@ -117,8 +117,13 @@ while True:
             json_data = json.loads(data_profile)
             pp_old = pp_data[username]
             pp = json_data['statistics']['pp']
-            time_current = time.strftime("%H:%M:%S %p %d/%m/%y", time.gmtime())
+            try:
+                time_current = time.strftime("%I:%M:%S %p %d/%m/%y", time.localtime(int(time.time())))
+            except:
+                pass
             pp_gain = float(pp)-float(pp_old)
+            pp = "{0:.2f}".format(round(pp,2))
+            pp_old = "{0:.2f}".format(round(pp_old,2))
             
             if (pp != pp_old) and (pp_gain >= pp_threshold):
                 pp_data[username] = pp
