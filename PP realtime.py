@@ -7,6 +7,7 @@ import time
 config_name = "config.txt"
 pp_data_name = "pp_data.txt"
 pp_threshold = 0 #only show pp changes above this amount
+wait = 0.1 #seconds
 
 #don't change
 usernames_to_add = []
@@ -15,6 +16,8 @@ config_usernames = []
 pp_data = {}
 prompt = "n"
 flag = False
+pp = 0
+pp_old = 0
 
 def init():
     try:
@@ -33,6 +36,25 @@ def initialise_values():
     for username in usernames:
         pp_data[username] = 0 #to prevent null errors
 
+def get_username(user_id):
+    global wait
+    try:
+        time.sleep(wait)
+        url = 'https://osu.ppy.sh/u/'+str(user_id)
+        data = request_url(url)
+        soup = BeautifulSoup(data, "lxml")
+        try:
+            data_profile = soup.find("script", attrs={"id": "json-user"}).text.strip()
+            json_data = json.loads(data_profile)
+            username_on_page = json_data["username"]
+            id_on_page = json_data["id"]
+            return username_on_page
+        except Exception as e:
+            print(e)
+            print("Invalid user: {}".format(user_id))
+    except:
+        get_username(user_id)
+
 def read_config():
     global config_usernames
     with open(config_name, "r+") as file:
@@ -40,10 +62,14 @@ def read_config():
             stripped_line = line.strip()
             if stripped_line not in config_usernames:
                 config_usernames.append(stripped_line)
+    print_usernames = []
+    for user_id_name in config_usernames:
+            username = get_username(user_id_name) #get username for human readability, especially if it's a user_id
+            print_usernames.append(username)    
     if prompt == "y":
-        print("Now Tracking: "+", ".join(config_usernames))
+        print("Now Tracking: "+", ".join(print_usernames))
     else:
-        print("Currently Tracking: "+", ".join(config_usernames))
+        print("Currently Tracking: "+", ".join(print_usernames))
 
 def add_new_users_prompt():
     try:
@@ -64,7 +90,7 @@ def add_new_users_prompt():
         else:
             pass
     except Exception as e:
-        print(e)
+        print("yeet",e)
 
 def add_users():
     global usernames_to_add,prompt
@@ -102,33 +128,51 @@ def write_pp_data():
             csv_data = data[0]+","+str(data[1])+"\n"
             file.write(csv_data)
     
-    
+def request_url(url):
+    global wait
+    try:
+        req = requests.get(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36"})
+        data = req.text
+        #print(data)
+        return data
+    except Exception as e:
+        print("yeet2",e)
+        time.sleep(wait)
+        request_url(url)
 
 init()
 
 while True:
     for username in usernames:
         try:
-            req = requests.get('https://osu.ppy.sh/u/'+str(username), headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36"})
-            data = req.text
-
+            time.sleep(wait)
+            url = 'https://osu.ppy.sh/u/'+str(username)
+            data = request_url(url)
             soup = BeautifulSoup(data, "lxml")
-            data_profile = soup.find("script", attrs={"id": "json-user"}).text.strip()
-            json_data = json.loads(data_profile)
-            pp_old = pp_data[username]
-            pp = json_data['statistics']['pp']
             try:
-                time_current = time.strftime("%I:%M:%S %p %d/%m/%y", time.localtime(int(time.time())))
+                data_profile = soup.find("script", attrs={"id": "json-user"}).text.strip()
+                json_data = json.loads(data_profile)
+                username_on_page = json_data["username"]
+                id_on_page = json_data["id"]
             except:
-                pass
-            pp_gain = float(pp)-float(pp_old)
-            pp = "{0:.2f}".format(round(pp,2))
-            pp_old = "{0:.2f}".format(round(pp_old,2))
-            
-            if (pp != pp_old) and (pp_gain >= pp_threshold):
-                pp_data[username] = pp
-                pp_gain = "{0:.2f}".format(round(pp_gain,2))
-                print(username+":","NEW PP("+str(pp)+")"+" -> ""RAW PP GAIN("+str(pp_gain)+")",time_current)
-        except:
-            pass
+                data_profile = None
+            if data_profile != None:
+                pp_old = float(pp_data[username])
+                pp = float(json_data['statistics']['pp'])
+                try:
+                    time_current = time.strftime("%I:%M:%S %p %d/%m/%y", time.localtime(int(time.time())))
+                except:
+                    pass
+                pp_gain = float(pp)-float(pp_old)
+                pp = "{0:.2f}".format(round(float(pp),2))
+                pp_old = "{0:.2f}".format(round(float(pp_old),2))
+                if (pp != pp_old) and (pp_gain >= pp_threshold):
+                    pp_data[username] = pp
+                    pp_gain = "{0:.2f}".format(round(float(pp_gain),2))
+                    print(username_on_page+":","NEW PP("+str(pp)+")"+" -> ""RAW PP GAIN("+str(pp_gain)+")",time_current)
+            else:
+                print("Username {} does not exist! Name change?".format(username))
+                usernames.remove(username)
+        except Exception as e:
+            print("yeet3",e,pp,pp_old)
     write_pp_data()
