@@ -7,7 +7,7 @@ import time
 config_name = "config.txt"
 pp_data_name = "pp_data.txt"
 pp_threshold = 0 #only show pp changes above this amount
-wait = 0.1 #seconds
+wait = 2 #seconds
 
 #don't change
 usernames_to_add = []
@@ -50,8 +50,8 @@ def get_username(user_id):
             id_on_page = json_data["id"]
             return username_on_page
         except Exception as e:
-            print(e)
             print("Invalid user: {}".format(user_id))
+            return None
     except:
         get_username(user_id)
 
@@ -62,10 +62,13 @@ def read_config():
             stripped_line = line.strip()
             if stripped_line not in config_usernames:
                 config_usernames.append(stripped_line)
+    if config_usernames != []:
+        print("Validating Usernames...")
     print_usernames = []
     for user_id_name in config_usernames:
             username = get_username(user_id_name) #get username for human readability, especially if it's a user_id
-            print_usernames.append(username)    
+            if username != None:
+                print_usernames.append(username)    
     if prompt == "y":
         print("Now Tracking: "+", ".join(print_usernames))
     else:
@@ -142,6 +145,7 @@ def request_url(url):
 
 init()
 
+print("Now tracking for live changes!")
 while True:
     for username in usernames:
         try:
@@ -154,7 +158,8 @@ while True:
                 json_data = json.loads(data_profile)
                 username_on_page = json_data["username"]
                 id_on_page = json_data["id"]
-            except:
+            except Exception as e:
+                print(e)
                 data_profile = None
             if data_profile != None:
                 pp_old = float(pp_data[username])
