@@ -7,10 +7,10 @@ import time
 config_name = "config.txt"
 pp_data_name = "pp_data.txt"
 pp_threshold = 0 #only show pp changes above this amount
-wait = 2 #seconds
+wait = 1 #seconds
 
 #don't change
-usernames_to_add = []
+userids_to_add = []
 usernames = []
 config_usernames = []
 pp_data = {}
@@ -47,21 +47,43 @@ def get_username(user_id):
             data_profile = soup.find("script", attrs={"id": "json-user"}).text.strip()
             json_data = json.loads(data_profile)
             username_on_page = json_data["username"]
-            id_on_page = json_data["id"]
             return username_on_page
         except Exception as e:
+            print(e)
             print("Invalid user: {}".format(user_id))
             return None
     except:
         get_username(user_id)
+
+def get_userid(username):
+    global wait
+    try:
+        time.sleep(wait)
+        url = 'https://osu.ppy.sh/u/'+str(username)
+        data = request_url(url)
+        soup = BeautifulSoup(data, "lxml")
+        try:
+            #print(soup)
+            data_profile = soup.find("script", attrs={"id": "json-user"}).text.strip()
+            json_data = json.loads(data_profile)
+            id_on_page = json_data["id"]
+            return id_on_page
+        except Exception as e:
+            print(e)
+            print("Invalid user: {}".format(username))
+            return None
+    except:
+        get_userid(username)
+
 
 def read_config():
     global config_usernames
     with open(config_name, "r+") as file:
         for line in file:
             stripped_line = line.strip()
-            if stripped_line not in config_usernames:
-                config_usernames.append(stripped_line)
+            user_id = stripped_line.split(",")[0]
+            if user_id not in config_usernames:
+                config_usernames.append(user_id)
     if config_usernames != []:
         print("Validating Usernames...")
     print_usernames = []
@@ -72,11 +94,12 @@ def read_config():
     if prompt == "y":
         print("Now Tracking: "+", ".join(print_usernames))
     else:
-        print("Currently Tracking: "+", ".join(print_usernames))
+        if print_usernames != []:
+            print("Currently Tracking: "+", ".join(print_usernames))
 
 def add_new_users_prompt():
     try:
-        global usernames_to_add, prompt, flag
+        global userids_to_add, prompt, flag
         while (prompt != "y") and (flag == False):
             prompt = input("Add new users to track? (y/n): ").lower()
             if (prompt == "yes"):
@@ -89,16 +112,21 @@ def add_new_users_prompt():
             users = input("New Users (eg. username1,username2): ")
             users_to_add = users.split(",")
             for user in users_to_add:
-                usernames_to_add.append(user.strip())
+                stripped_user = str(user).strip()
+                user_id = get_userid(stripped_user)
+                if user_id != None:
+                    userids_to_add.append(str(user_id).strip())
+                else:
+                    print("Error finding UserID for user: {}".format(stripped_user))
         else:
             pass
     except Exception as e:
         print("yeet",e)
 
 def add_users():
-    global usernames_to_add,prompt
+    global userids_to_add,prompt
     with open(config_name, "a") as file:
-        for username in usernames_to_add:
+        for username in userids_to_add:
             if username not in config_usernames:
                 file.write(username.strip()+"\n")
     if prompt == "y":
