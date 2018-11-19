@@ -196,13 +196,16 @@ while True:
                     time_current = time.strftime("%I:%M:%S %p %d/%m/%y", time.localtime(int(time.time())))
                 except:
                     pass
-                pp_gain = float(pp)-float(pp_old)
+                pp_change = float(pp)-float(pp_old)
                 pp = "{0:.2f}".format(round(float(pp),2))
                 pp_old = "{0:.2f}".format(round(float(pp_old),2))
-                if (pp != pp_old) and (pp_gain >= pp_threshold):
+                if (pp != pp_old) and ((pp_change >= pp_threshold) or (pp_threshold == 0)):
                     pp_data[username] = pp
-                    pp_gain = "{0:.2f}".format(round(float(pp_gain),2))
-                    print(username_on_page+":","NEW PP("+str(pp)+")"+" -> ""RAW PP GAIN("+str(pp_gain)+")",time_current)
+                    pp_change = "{0:.2f}".format(round(float(pp_change),2))
+                    if (pp_change < 0):
+                        print(username_on_page+":","NEW PP("+str(pp)+")"+" -> ""RAW PP LOSS("+str(abs(pp_change))+")",time_current)
+                    else:
+                        print(username_on_page+":","NEW PP("+str(pp)+")"+" -> ""RAW PP GAIN("+str(pp_change)+")",time_current)
             else:
                 print("Username {} does not exist! Name change?".format(username))
                 usernames.remove(username)
